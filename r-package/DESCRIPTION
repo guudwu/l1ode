@@ -1,0 +1,10 @@
+Package: l1ode
+Type: Package
+Title: Linear Ordinary Differential Equations of Order 1
+Version: 0.1
+Date: 2014-02-10
+Author: GuuD WU
+Maintainer: GuuD WU<guuuuud@gmail.com>
+Description: Mainly to solve inverse problem.
+License: GPLv2.
+Depends: permute, pracma, minqa, minpack.lm
