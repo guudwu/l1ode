@@ -7,4 +7,4 @@ Author: GuuD WU
 Maintainer: GuuD WU<guuuuud@gmail.com>
 Description: Mainly to solve inverse problem.
 License: GPLv2.
-Depends: permute, pracma, minqa, minpack.lm
+Depends: permute, pracma, minqa, minpack.lm, HH
