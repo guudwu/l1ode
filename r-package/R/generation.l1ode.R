@@ -29,10 +29,19 @@
 # and double that value when there exists one real eigen-value.
 # The order of "b" is permuted to breaking the ascension.
 
+# 2a. Scaling coefficients in the linear term to similar magnitude.
+# Only for even dimension.
+# For each 2x2 diagonal block, a similarity transformation
+#     a b
+#     c 1
+# is applied.
+# The optimal a,b,c are computed via Levenberg-Marquardt algorithm.
+
 
 generation.l1ode <- function (
   dimension
   , timepoint
+  , scaling = FALSE
   , sanitycheck = FALSE
 )
 
@@ -46,6 +55,8 @@ generation.l1ode <- function (
 #   Hence if "dimension" is even, all eigen-values are complex,
 #   otherwise there exists one real eigen-value in the spectrum.
 # timepoint: Time points for observation data curves.
+# scaling: Scaling coefficients of linear term to similar magnitude.
+#   Can only be applied for even dimension.
 # sanitycheck: Whether to perform a sanity check on input arguments.
 
 # OUTPUT:
@@ -69,7 +80,7 @@ class(ret) <- 'l1ode'
 # Sanity check#{{{
 if ( sanitycheck )
 {
-  # dimension#{{{
+# dimension#{{{
   if (
     !is.integer(dimension)
     || length(dimension)!=1
@@ -78,9 +89,9 @@ if ( sanitycheck )
   {
     stop('Argument "dimension" must be a positive integer.')
   }
-  #}}}
+#}}}
 
-  # timepoint#{{{
+# timepoint#{{{
   if (
     !is.numeric(timepoint)
     || length(timepoint)<2
@@ -90,7 +101,25 @@ if ( sanitycheck )
     stop('Argument "timepoint" must be a numeric vector ' ,
       'with strictly ascending elements.')
   }
-  #}}}
+#}}}
+
+# scaling#{{{
+  if (
+    !is.logical(scaling)
+    || length(scaling)!=1
+  )
+  {
+    stop('Argument "scaling" must be a logical scalar.')
+  }
+
+  if (
+    scaling
+    && dimension%%2!=0
+  )
+  {
+    stop('Argument "scaling" cannot be TRUE for an odd "dimension".')
+  }
+#}}}
 }
 #}}}
 
@@ -174,6 +203,64 @@ if ( num_real_eigen == 1 )
 # Initial condition#{{{
 ret$truth$initial <- rep ( 1 , dimension )
 ret$truth$initial [ 2*(1:num_complex_eigen)-1 ] <- 0
+#}}}
+
+# Scaling#{{{
+if ( scaling )
+{
+  objective <- function (
+    par
+    , k
+  )
+  {
+    ret <- numeric(3)
+    temp <- k * ( par[1] - par[2]*par[3] )
+    ret[1] <- par[1]*par[3] + par[2] - temp
+    ret[2] <- par[1]**2 + par[2]**2 - temp
+    ret[3] <- par[3]**2 + 1 - temp
+    return(ret)
+  }
+
+  jacobian <- function (
+    par
+    , k
+  )
+  {
+    ret <- matrix ( 0 , 3 , 3 )
+    ret[1] <- par[3] - k
+    ret[2] <- 2*par[1] - k
+    ret[3] <- -k
+    ret[4] <- 1 + par[3]*k
+    ret[5] <- 2*par[2] + par[3]*k
+    ret[6] <- par[3]*k
+    ret[7] <- par[1] + par[2]*k
+    ret[8] <- par[2]*k
+    ret[9] <- 2*par[3] + par[2]*k
+    return(ret)
+  }
+
+  require('minpack.lm')
+  lapply ( 1 : num_complex_eigen , function(index)
+  {
+    scale_mat <-
+      nls.lm (
+        rep ( 1 , 3 )
+        , lower = numeric(3)
+        , upper = NULL
+        , fn = objective
+        , jac = jacobian
+        , control = nls.lm.control()
+        , k = num_complex_eigen/permute_index[index]
+      ) $ par
+    scale_mat <- matrix ( c(scale_mat,1) , 2 , 2 )
+    temp <- (2*index-1) : (2*index)
+    ret$truth$data[,temp] <<- ret$truth$data[,temp] %*% scale_mat
+    scale_mat <- t(scale_mat)
+    ret$truth$linear[temp,temp] <<-
+      scale_mat %*% ret$truth$linear[temp,temp] %*% solve(scale_mat)
+    ret$truth$initial[temp] <<- scale_mat %*% ret$truth$initial[temp]
+  } )
+}
 #}}}
 
 # Return#{{{

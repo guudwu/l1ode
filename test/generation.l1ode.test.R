@@ -4,7 +4,7 @@ source( paste(directory,'generation.l1ode.R',sep='') )
 
 # Parameter
 set.seed(0)
-dimension <- as.integer(5)
+dimension <- as.integer(10)
 time_point <- seq ( 0 , 1 , length.out=101 ) [-1]
 
 # Generate model
@@ -12,6 +12,7 @@ object <-
   generation.l1ode (
     dimension
     , time_point
+    , scaling = TRUE
     , sanitycheck = TRUE
   )
 
@@ -47,3 +48,11 @@ cat('rss: ')
 cat(rss)
 cat('\n')
 #print(difference)
+
+temp <- abs(object$truth$linear[which(object$truth$linear!=0)])
+cat('Largest entry: ')
+cat(max(abs(temp)))
+cat('\n')
+cat('Smallest entry: ')
+cat(min(abs(temp)))
+cat('\n')
