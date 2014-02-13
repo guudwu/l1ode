@@ -4,7 +4,7 @@ source( paste(directory,'generation.l1ode.R',sep='') )
 
 # Parameter
 set.seed(0)
-dimension <- as.integer(9)
+dimension <- as.integer(10)
 time_point <- seq ( 0 , 1 , length.out=101 ) [-1]
 
 orthogonal_transformation <-
@@ -19,9 +19,10 @@ object <-
   generation.l1ode (
     dimension
     , time_point
-#    , scaling = TRUE
-    , orthogonal_transformation = orthogonal_transformation
-    , row_column_permutation = TRUE
+    , scaling = TRUE
+#    , orthogonal_transformation = orthogonal_transformation
+#    , row_column_permutation = TRUE
+    , constant = list ( 0 , 1e-2 )
     , sanitycheck = TRUE
   )
 

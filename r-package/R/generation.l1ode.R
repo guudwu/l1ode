@@ -52,6 +52,8 @@
 # which means the system is still unconnected,
 # if it is unconnected before this permutation.
 
+# 4. Add constant term.
+
 
 generation.l1ode <- function (
   dimension
@@ -59,6 +61,7 @@ generation.l1ode <- function (
   , scaling = FALSE
   , orthogonal_transformation = list()
   , row_column_permutation = FALSE
+  , constant = NULL
   , sanitycheck = FALSE
 )
 
@@ -84,6 +87,12 @@ generation.l1ode <- function (
 #   coefficient matrix.
 # row_column_permutation: Make the sparsity structure less obvious
 #   by permuting rows and columns of the coefficient matrix.
+# constant: A list of two vectors of length "dimension"
+#   indicating lower and upper bounds of constant term.
+#   Each component can also be a scalar,
+#   which will be automatically expanded to a vector.
+#   The default NULL value disables the constant term.
+#   Notice that NULL is not mathematically equivalent to "list(0,0)".
 # sanitycheck: Whether to perform a sanity check on input arguments.
 
 # OUTPUT:
@@ -92,6 +101,8 @@ generation.l1ode <- function (
 # initial: Initial condition of the system.
 # linear: Linear term of the system.
 #   It will be identical to the first column of "curve".
+# constant: Constant term of the system.
+#   Value NULL indicates the system does not contain a constant term.
 # eigen_complex: Complex eigenvalues of the linear term.
 #   Notice that the conjugate of each element is also an eigenvalue.
 # eigen_real: Real eigenvalues of the linear term.
@@ -192,6 +203,38 @@ if ( sanitycheck )
   )
   {
     stop('Argument "row_column_permutation" must be a logical scalar.')
+  }
+#}}}
+
+# constant#{{{
+  constant_exist <- !is.null(constant)
+  if ( constant_exist )
+  {
+    if (
+      !is.list(constant)
+      || length(constant)!=2
+    )
+    {
+      stop('Argument "constant" must be '
+        ,'a list of length two, with each element a vector or scalar.')
+    }
+    lapply ( 1:2 , function(index)
+    {
+      if ( !is.numeric(constant[[index]]) )
+      {
+        stop('Each element of argument "constant" must be a scalar or ' ,
+          'a vector of length "dimension".')
+      }
+      if ( length(constant[[index]])==1 )
+      {
+        constant[[index]] <- rep ( constant[[index]] , dimension )
+      }
+      else if ( length(constant[[index]])!=dimension )
+      {
+        stop('Each element of argument "constant" must be a scalar or ' ,
+          'a vector of length "dimension".')
+      }
+    } )
   }
 #}}}
 }
@@ -359,6 +402,21 @@ if ( row_column_permutation )
     ret$truth$linear [ permute_index , permute_index ]
   ret$truth$data <- ret$truth$data [ , permute_index ]
   ret$truth$initial <- ret$truth$initial[permute_index]
+}
+#}}}
+
+# Constant#{{{
+if ( constant_exist )
+{
+  ret$truth$constant <-
+    runif ( dimension , constant[[1]] , constant[[2]] )
+  temp <- solve ( ret$truth$linear , ret$truth$constant )
+  lapply ( 1 : length(timepoint) , function(index)
+  {
+    ret$truth$data[index,] <<- ret$truth$data[index,] - temp
+    return()
+  } )
+  ret$truth$initial <- ret$truth$initial - temp
 }
 #}}}
 
