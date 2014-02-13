@@ -42,12 +42,23 @@
 # to mix adjacent diagonal blocks.
 # Disables 2a.
 
+# 3. Permute rows and columns to make the sparsity structure less
+# obvious.
+# Permute rows and columns
+# by left multiplying a permutation matrix
+# and right multiplying its transpose to the linear term.
+# This will make the sparsity structure less obvious,
+# however it does not change the property,
+# which means the system is still unconnected,
+# if it is unconnected before this permutation.
+
 
 generation.l1ode <- function (
   dimension
   , timepoint
   , scaling = FALSE
   , orthogonal_transformation = list()
+  , row_column_permutation = FALSE
   , sanitycheck = FALSE
 )
 
@@ -71,6 +82,8 @@ generation.l1ode <- function (
 #   to Mth-Nth row of the coefficient matrix,
 #   and its transpose right multiplied to Mth-Nth column of the
 #   coefficient matrix.
+# row_column_permutation: Make the sparsity structure less obvious
+#   by permuting rows and columns of the coefficient matrix.
 # sanitycheck: Whether to perform a sanity check on input arguments.
 
 # OUTPUT:
@@ -169,6 +182,16 @@ if ( sanitycheck )
       stop('Out-of-bound index in elements of '
         ,'argument "orthogonal_transformation".')
     }
+  }
+#}}}
+
+# row_column_permutation#{{{
+  if (
+    !is.logical(row_column_permutation)
+    || length(row_column_permutation)!=1
+  )
+  {
+    stop('Argument "row_column_permutation" must be a logical scalar.')
   }
 #}}}
 }
@@ -324,6 +347,18 @@ for ( item in orthogonal_transformation )
   ret$truth$data <- ret$truth$data %*% t(temp)
   ret$truth$linear <- temp %*% ret$truth$linear %*% t(temp)
   ret$truth$initial <- temp %*% ret$truth$initial
+}
+#}}}
+
+# Row-column permutation#{{{
+if ( row_column_permutation )
+{
+  require('permute')
+  permute_index <- permute::shuffle ( dimension )
+  ret$truth$linear <-
+    ret$truth$linear [ permute_index , permute_index ]
+  ret$truth$data <- ret$truth$data [ , permute_index ]
+  ret$truth$initial <- ret$truth$initial[permute_index]
 }
 #}}}
 

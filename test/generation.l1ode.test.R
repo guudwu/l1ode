@@ -21,6 +21,7 @@ object <-
     , time_point
 #    , scaling = TRUE
     , orthogonal_transformation = orthogonal_transformation
+    , row_column_permutation = TRUE
     , sanitycheck = TRUE
   )
 
