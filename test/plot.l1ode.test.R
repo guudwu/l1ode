@@ -1,7 +1,7 @@
 directory <- '~/working/program/l1ode/r-package/R/'
 
 source( paste(directory,'generation.l1ode.R',sep='') )
-source( paste(directory,'summary.l1ode.R',sep='') )
+source( paste(directory,'plot.l1ode.R',sep='') )
 
 # Parameter
 set.seed(0)
