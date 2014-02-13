@@ -30,6 +30,7 @@
 # The order of "b" is permuted to breaking the ascension.
 
 # 2a. Scaling coefficients in the linear term to similar magnitude.
+# Disables 2b.
 # Only for even dimension.
 # For each 2x2 diagonal block, a similarity transformation
 #     a b
@@ -37,11 +38,16 @@
 # is applied.
 # The optimal a,b,c are computed via Levenberg-Marquardt algorithm.
 
+# 2b. Use a series of similarity transformation via orthogonal matrices
+# to mix adjacent diagonal blocks.
+# Disables 2a.
+
 
 generation.l1ode <- function (
   dimension
   , timepoint
   , scaling = FALSE
+  , orthogonal_transformation = list()
   , sanitycheck = FALSE
 )
 
@@ -57,6 +63,14 @@ generation.l1ode <- function (
 # timepoint: Time points for observation data curves.
 # scaling: Scaling coefficients of linear term to similar magnitude.
 #   Can only be applied for even dimension.
+# orthogonal_transformation: A list which applies
+#   similarity transformation
+#   to coefficient matrix to adjust the sparsity and structure.
+#   Each component of the list is a 2-tuple (M,N)
+#   A random orthogonal matrix of dimension (N-M+1) is left multiplied
+#   to Mth-Nth row of the coefficient matrix,
+#   and its transpose right multiplied to Mth-Nth column of the
+#   coefficient matrix.
 # sanitycheck: Whether to perform a sanity check on input arguments.
 
 # OUTPUT:
@@ -118,6 +132,43 @@ if ( sanitycheck )
   )
   {
     stop('Argument "scaling" cannot be TRUE for an odd "dimension".')
+  }
+#}}}
+
+# orthogonal_transformation#{{{
+  if ( !is.list(orthogonal_transformation) )
+  {
+    stop('Argument "orthogonal_transformation" should be a list.')
+  }
+  if (
+    scaling
+    && length(orthogonal_transformation)!=0
+  )
+  {
+    stop('Argument "orthogonal_transformation" can only be non-empty ',
+      'when "scaling" is FALSE.')
+  }
+  for ( item in orthogonal_transformation )
+  {
+    if (
+      !is.integer(item)
+      || length(item)!=2
+    )
+    {
+      stop('Each element of argument "orthogonal_transformation" '
+        ,'must be an integer vector of length 2.')
+    }
+    if ( item[1]>=item[2] )
+    {
+      stop('In each element of argument "orthogonal_transformation", ' ,
+        'the second component must be larger than first.'
+      )
+    }
+    if ( item[1]<1 || item[2]>dimension )
+    {
+      stop('Out-of-bound index in elements of '
+        ,'argument "orthogonal_transformation".')
+    }
   }
 #}}}
 }
@@ -260,6 +311,19 @@ if ( scaling )
       scale_mat %*% ret$truth$linear[temp,temp] %*% solve(scale_mat)
     ret$truth$initial[temp] <<- scale_mat %*% ret$truth$initial[temp]
   } )
+}
+#}}}
+
+# Orthogonal transformation#{{{
+for ( item in orthogonal_transformation )
+{
+  require('pracma')
+  temp <- diag(dimension)
+  temp [ item[1]:item[2] , item[1]:item[2] ] <-
+    pracma::rortho ( item[2]-item[1]+1 )
+  ret$truth$data <- ret$truth$data %*% t(temp)
+  ret$truth$linear <- temp %*% ret$truth$linear %*% t(temp)
+  ret$truth$initial <- temp %*% ret$truth$initial
 }
 #}}}
 
